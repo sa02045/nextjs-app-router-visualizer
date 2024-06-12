@@ -1,0 +1,17 @@
+{
+  "name": "nextjs-app-router-visualizer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "devjojo",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/parser": "^7.24.7",
+    "@babel/traverse": "^7.24.7",
+    "typescript": "^5.4.5"
+  }
+}
