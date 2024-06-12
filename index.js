@@ -121,6 +121,7 @@ function recursiveRouter(currentPath) {
           recursiveRouter(nextFilePath);
         }
       } else if (isLinkComponent(path)) {
+        const event = getEvent(path);
         const attributes = path.get("openingElement").get("attributes");
         const href = attributes.find(
           (attr) => attr.get("name").node.name === "href"
