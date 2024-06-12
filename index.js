@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import { parse } from "@babel/parser";
+import _traverse from "@babel/traverse";
+const traverse = _traverse.default;
 
 function getAST(filePath) {
   const code = fs.readFileSync(filePath, "utf-8");
@@ -58,12 +60,17 @@ function isRouterPush(path) {
   );
 }
 
-function recursiveRouter(path) {
-  const ast = getAST(path);
+function recursiveRouter(currentPath) {
+  const currentAST = getAST(currentPath);
 
-  traverse(ast, {
+  traverse(currentAST, {
     enter(path) {
-      if (isRouterPush(path)) {
+      if (
+        path.isCallExpression() &&
+        path.get("callee").isMemberExpression() &&
+        path.get("callee.object").isIdentifier({ name: "router" }) &&
+        path.get("callee.property").isIdentifier({ name: "push" })
+      ) {
         const args = path.get("arguments");
         let event;
         while (path.parentPath) {
@@ -87,21 +94,21 @@ function recursiveRouter(path) {
           if (arg.isStringLiteral()) {
             const nextPath = arg.node.value;
             const nextFilePath = "./app" + nextPath + "/page.tsx";
-            const currentPath = path
+            const myCurrent = currentPath
               .replace("./app", "")
               .replace("/page.tsx", "");
 
-            if (isCyclic(currentPath, nextPath)) {
+            if (isCyclic(myCurrent, nextPath)) {
               return;
             }
 
-            if (currentPath === "") {
+            if (myCurrent === "") {
               map.set("entry", {
                 path: nextPath,
                 event,
               });
             } else {
-              map.set(currentPath, {
+              map.set(myCurrent, {
                 path: nextPath,
                 event,
               });
@@ -114,5 +121,7 @@ function recursiveRouter(path) {
     },
   });
 }
+
+start();
 
 export default start;
