@@ -39,18 +39,19 @@ const start = async () => {
     recursiveRouter(filePath);
   });
 
-  let graph = "";
-
-  for (const [key, value] of map) {
-    let 출발지 = key;
-    let 도착지 = value.path;
-    let 이벤트 = value.event;
-
-    graph += `${출발지} --> ${도착지}: ${이벤트}\n`;
-  }
-
-  fs.writeFileSync("./graph.d2", graph);
+  drawGraph();
 };
+
+function drawGraph() {
+  let graph = "";
+  for (const [key, value] of map) {
+    let start = key;
+    let destination = value.path;
+    let event = value.event;
+    graph += `${start} --> ${destination}: ${event}\n`;
+  }
+  fs.writeFileSync("./graph.d2", graph);
+}
 
 function isRouterPush(path) {
   return (
