@@ -118,7 +118,7 @@ function start({ entryPagePath }) {
     console.error(entry, "Entry page does not exist");
     return;
   }
-  APP_FOLDER_PATH = entry.replace("/page.tsx", "");
+  APP_FOLDER_PATH = entry.replace("/app", "").replace("/page.tsx", "");
   recursive(entry);
   drawMermaidGraph();
 }

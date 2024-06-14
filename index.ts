@@ -29,7 +29,7 @@ export function start({ entryPagePath }: StartArgs) {
     return;
   }
 
-  APP_FOLDER_PATH = entry.replace("/page.tsx", "");
+  APP_FOLDER_PATH = entry.replace("/app", "").replace("/page.tsx", "");
   recursive(entry);
   drawMermaidGraph();
 }
