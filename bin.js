@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 
 import cac from "cac";
-import start from "./index.js";
+import { start } from "./dist/index.js";
 
 const cli = cac("nextjs-app-router-visualizer");
 
 cli.help();
 
-cli.option("this is test option", "This is test option", {
-  default: "default",
-});
+cli.option("--entry -e <entry>", "Entry file path");
 
-await start();
+const parsed = cli.parse();
+
+const { entry, e } = parsed.options;
+
+start({
+  entryPagePath: entry || e,
+});
