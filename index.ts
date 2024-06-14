@@ -19,14 +19,10 @@ interface StartArgs {
   output: string;
 }
 
-// @ts-ignore
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = nodePath.dirname(__filename).replace("/dist", "");
-
 let APP_FOLDER_PATH = "";
 
 export function start({ entryPagePath }: StartArgs) {
-  const entry = nodePath.join(__dirname, entryPagePath);
+  const entry = entryPagePath;
 
   if (!fs.existsSync(entry)) {
     console.error(entry, "Entry page does not exist");

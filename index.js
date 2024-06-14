@@ -110,13 +110,10 @@ function drawMermaidGraph() {
 }
 
 // index.ts
-import { fileURLToPath } from "node:url";
 var traverse = _traverse.default;
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = nodePath.dirname(__filename).replace("/dist", "");
 var APP_FOLDER_PATH = "";
 function start({ entryPagePath }) {
-  const entry = nodePath.join(__dirname, entryPagePath);
+  const entry = entryPagePath;
   if (!fs3.existsSync(entry)) {
     console.error(entry, "Entry page does not exist");
     return;
