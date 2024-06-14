@@ -6,7 +6,6 @@ import {
   hasRouterPush,
   getPathName,
   hasRouterPushJsxAttributeValue,
-  getTrigger,
 } from "./validNodePath.js";
 import { getJsxAST } from "./ast.js";
 import { addGraph, drawMermaidGraph, isCyclic } from "./graph.js";
@@ -53,7 +52,8 @@ function recursive(filePath: string) {
         path.traverse({
           enter(childPath) {
             if (childPath.isFunctionDeclaration()) {
-              componentName = childPath.node.id?.name as string;
+              componentName = childPath.node.id.name;
+              childPath.stop();
               path.stop();
             }
           },
@@ -85,11 +85,36 @@ function recursive(filePath: string) {
         path.traverse({
           enter(childPath) {
             if (hasRouterPush(childPath)) {
-              nextURL = getPathName(childPath);
-              trigger = getTrigger(childPath, componentName);
+              if (componentName !== path.node.id.name) {
+                nextURL = getPathName(childPath);
+                trigger = path.node.id.name;
+              }
             }
           },
         });
+      }
+      if (path.isJSXIdentifier() && path.node.name === "Link") {
+        const jsxLinkElement = path.findParent((p) => p.isJSXElement());
+        if (jsxLinkElement) {
+          jsxLinkElement.traverse({
+            enter(childPath) {
+              if (childPath.isJSXText()) {
+                trigger = childPath.node.value;
+              }
+
+              if (childPath.isJSXAttribute()) {
+                const name = childPath.get("name");
+                const value = childPath.get("value");
+                if (
+                  name.isJSXIdentifier({ name: "href" }) &&
+                  value.isStringLiteral()
+                ) {
+                  nextURL = value.node.value;
+                }
+              }
+            },
+          });
+        }
       }
 
       if (nextURL && trigger) {
