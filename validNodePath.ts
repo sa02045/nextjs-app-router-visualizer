@@ -119,7 +119,7 @@ export function getJsxArrowFunctionTrigger(path: NodePath) {
   return trigger;
 }
 
-export function getTrigger(routerPath: NodePath) {
+export function getTrigger(routerPath: NodePath, componentName: string) {
   if (!routerPath.isCallExpression()) {
     return "";
   }
@@ -131,8 +131,9 @@ export function getTrigger(routerPath: NodePath) {
       parentPath.traverse({
         enter(childPath) {
           if (hasRouterPush(childPath)) {
-            trigger = parentPath.node.id?.name || "";
-            parentPath.stop();
+            if (componentName !== parentPath.node.id?.name) {
+              trigger = parentPath.node.id?.name;
+            }
           }
         },
       });
