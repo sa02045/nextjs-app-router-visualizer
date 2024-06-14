@@ -4,14 +4,7 @@ export default function Entry() {
   return (
     <div>
       <h1>About Page</h1>
-      <input
-        onBlur={() => {
-          //
-        }}
-        onClick={() => router.push("/about")}
-      >
-        Go to About
-      </input>
+      <input onClick={() => router.push("/about")}>Go to About</input>
     </div>
   );
 }
