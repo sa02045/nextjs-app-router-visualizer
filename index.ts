@@ -9,7 +9,6 @@ import {
 } from "./validNodePath.js";
 import { getJsxAST } from "./ast.js";
 import { addGraph, drawMermaidGraph, isCyclic } from "./graph.js";
-import { fileURLToPath } from "node:url";
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
@@ -29,7 +28,7 @@ export function start({ entryPagePath }: StartArgs) {
     return;
   }
 
-  APP_FOLDER_PATH = entry.replace("/app", "").replace("/page.tsx", "");
+  APP_FOLDER_PATH = entry.replace("/page.tsx", "");
   recursive(entry);
   drawMermaidGraph();
 }
@@ -115,7 +114,10 @@ function recursive(filePath: string) {
 
       if (nextURL && trigger) {
         const startURL =
-          filePath.replace(APP_FOLDER_PATH, "").replace("/page.tsx", "") || "/";
+          filePath
+            .replace(APP_FOLDER_PATH, "")
+            .replace("/app", "")
+            .replace("/page.tsx", "") || "/";
 
         if (isCyclic(startURL, nextURL)) {
           return;
