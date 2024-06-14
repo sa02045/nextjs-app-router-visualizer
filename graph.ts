@@ -1,5 +1,5 @@
 import fs from "node:fs";
-
+import prettier from "prettier";
 type Node = {
   endURL: string;
   trigger: string;
@@ -20,18 +20,30 @@ export function addGraph(startURL: string, endURL: string, trigger: string) {
   Graph.set(startURL, visited);
 }
 
-export function drawD2Graph() {
-  let graph = "";
+export function drawMermaidGraph() {
+  let graph = "flowchart TB\n";
   Graph.forEach((value, startURL) => {
     value.forEach((v) => {
-      const { endURL, trigger } = v;
-      graph += getD2GraphLine(startURL, endURL, trigger);
+      graph += `${startURL} -->|${v.trigger}| ${v.endURL}\n`;
     });
   });
 
-  fs.writeFileSync("./graph.d2", graph);
-}
+  const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    </script>
+  </head>
+  <body>
+    <pre class="mermaid">
+       ${graph}
+    </pre>
+  </body>
+</html>
+`;
 
-function getD2GraphLine(startURL: string, endURL: string, trigger?: string) {
-  return `${startURL} -> ${endURL}: ${trigger}\n`;
+  prettier.format(html, { parser: "html" }).then((formatHTML) => {
+    fs.writeFileSync("graph.html", formatHTML);
+  });
 }
