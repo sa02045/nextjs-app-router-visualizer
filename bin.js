@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import cac from "cac";
-import { start } from "./dist/index.js";
+import { start } from "./index.js";
 
 const cli = cac("nextjs-app-router-visualizer");
 
