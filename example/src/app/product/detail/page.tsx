@@ -1,5 +1,6 @@
 import { useRouter } from "next/navigation";
 import { Component } from "./component";
+import Link from "next/link";
 export default function ProductDetail() {
   const router = useRouter();
 
@@ -11,6 +12,7 @@ export default function ProductDetail() {
           router.push("/product");
         }}
       ></Component>
+      <Link href="/product">Go to Product</Link>
     </div>
   );
 }
