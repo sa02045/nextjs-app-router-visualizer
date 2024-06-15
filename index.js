@@ -1,4 +1,4 @@
-// index.ts
+// src/index.ts
 import _traverse from "@babel/traverse";
 import fs3 from "node:fs";
 import nodePath from "node:path";
@@ -109,7 +109,7 @@ function drawMermaidGraph() {
   });
 }
 
-// index.ts
+// src/index.ts
 var traverse = _traverse.default;
 var APP_FOLDER_PATH = "";
 function start({ entryPagePath }) {
@@ -118,7 +118,7 @@ function start({ entryPagePath }) {
     console.error(entry, "Entry page does not exist");
     return;
   }
-  APP_FOLDER_PATH = entry.replace("/app", "").replace("/page.tsx", "");
+  APP_FOLDER_PATH = entry.replace("/page.tsx", "");
   recursive(entry);
   drawMermaidGraph();
 }
@@ -193,7 +193,7 @@ function recursive(filePath) {
         }
       }
       if (nextURL && trigger) {
-        const startURL = filePath.replace(APP_FOLDER_PATH, "").replace("/page.tsx", "") || "/";
+        const startURL = filePath.replace(APP_FOLDER_PATH, "").replace("/app", "").replace("/page.tsx", "") || "/";
         if (isCyclic(startURL, nextURL)) {
           return;
         }

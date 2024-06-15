@@ -15,9 +15,7 @@
     "importHelpers": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationDir": "dist/types",
-    "outDir": "dist"
+    "declaration": true
   },
-  "include": ["index.ts"]
+  "include": ["src/index.ts"]
 }

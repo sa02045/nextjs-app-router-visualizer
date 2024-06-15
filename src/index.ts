@@ -6,9 +6,9 @@ import {
   hasRouterPush,
   getPathName,
   hasRouterPushJsxAttributeValue,
-} from "./validNodePath.js";
-import { getJsxAST } from "./ast.js";
-import { addGraph, drawMermaidGraph, isCyclic } from "./graph.js";
+} from "../validNodePath.js";
+import { getJsxAST } from "../ast.js";
+import { addGraph, drawMermaidGraph, isCyclic } from "../graph.js";
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
