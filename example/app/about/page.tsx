@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 export default function About() {
@@ -5,8 +6,7 @@ export default function About() {
   return (
     <div>
       <h1>About Page</h1>
-      <button onClick={() => router.push("/home")}>Go to Home</button>
-      <Link href="/product/detail">Go to product detail</Link>
+      <Link href="/product">Go to product detail</Link>
     </div>
   );
 }
