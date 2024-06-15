@@ -39,10 +39,31 @@ export function start({ entryPagePath }: StartArgs) {
   graph.drawMermaidGraph();
 }
 
+function getDynamicRouteFolder(filePath: string) {
+  const paths = filePath.replace("/page.tsx", "").split("/");
+  paths.pop();
+  const folderPath = [...paths].join("/");
+
+  let dynamicRoute = null;
+
+  fs.readdirSync(folderPath).forEach((file) => {
+    if (file.startsWith("[") && file.endsWith("]")) {
+      dynamicRoute = folderPath + "/" + file;
+    }
+  });
+
+  return dynamicRoute;
+}
+
 function recursive(filePath: string) {
   if (!fs.existsSync(filePath)) {
-    console.log(filePath, "File does not exist");
-    return;
+    const folderName = getDynamicRouteFolder(filePath);
+    if (folderName) {
+      filePath = folderName + "/page.tsx";
+    } else {
+      console.error(filePath, "File does not exist");
+      return;
+    }
   }
 
   const ast = getJsxAST(filePath);
