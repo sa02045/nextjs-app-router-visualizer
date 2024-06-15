@@ -1,6 +1,7 @@
 import _traverse from "@babel/traverse";
 import fs from "node:fs";
 import nodePath from "node:path";
+import { isLinkNode, parseLinkNode } from "./nodePath.js";
 
 import {
   hasRouterPush,
@@ -21,15 +22,15 @@ interface StartArgs {
 let APP_FOLDER_PATH = "./app";
 
 export function start({ entryPagePath }: StartArgs) {
-  const entry = entryPagePath;
-
-  if (!fs.existsSync(entry)) {
-    console.error(entry, "Entry page does not exist");
+  if (!fs.existsSync(entryPagePath)) {
+    console.error(entryPagePath, "Entry page does not exist");
     return;
   }
 
   APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
-  recursive(entry);
+
+  recursive(entryPagePath);
+
   graph.drawMermaidGraph();
 }
 
@@ -38,7 +39,9 @@ function recursive(filePath: string) {
     console.log(filePath, "File does not exist");
     return;
   }
+
   const ast = getJsxAST(filePath);
+
   let componentName: string = "";
 
   traverse(ast, {
@@ -88,28 +91,11 @@ function recursive(filePath: string) {
           },
         });
       }
-      if (path.isJSXIdentifier() && path.node.name === "Link") {
-        const jsxLinkElement = path.findParent((p) => p.isJSXElement());
-        if (jsxLinkElement) {
-          jsxLinkElement.traverse({
-            enter(childPath) {
-              if (childPath.isJSXText()) {
-                trigger = childPath.node.value;
-              }
 
-              if (childPath.isJSXAttribute()) {
-                const name = childPath.get("name");
-                const value = childPath.get("value");
-                if (
-                  name.isJSXIdentifier({ name: "href" }) &&
-                  value.isStringLiteral()
-                ) {
-                  nextURL = value.node.value;
-                }
-              }
-            },
-          });
-        }
+      if (isLinkNode(path)) {
+        const linkInfo = parseLinkNode(path);
+        nextURL = linkInfo.href;
+        trigger = linkInfo.text;
       }
 
       if (nextURL && trigger) {

@@ -73,9 +73,32 @@ export function getPathName(routerPath: NodePath) {
   return "";
 }
 
-export function isLinkComponent(path: NodePath) {
+export function isLinkNode(path: NodePath) {
   return (
     path.isJSXElement() &&
     path.get("openingElement").get("name").isJSXIdentifier({ name: "Link" })
   );
+}
+
+export function parseLinkNode(linkNodePath: NodePath) {
+  let href = "";
+  let text = "";
+
+  linkNodePath.traverse({
+    enter(path) {
+      if (path.isJSXAttribute()) {
+        const name = path.get("name");
+        const value = path.get("value");
+        if (name.isJSXIdentifier({ name: "href" }) && value.isStringLiteral()) {
+          href = value.node.value;
+        }
+      }
+
+      if (path.isJSXText()) {
+        text = path.node.value;
+      }
+    },
+  });
+
+  return { href, text };
 }
