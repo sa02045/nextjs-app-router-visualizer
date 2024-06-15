@@ -6,9 +6,9 @@ import {
   hasRouterPush,
   getPathName,
   hasRouterPushJsxAttributeValue,
-} from "../validNodePath.js";
-import { getJsxAST } from "../ast.js";
-import { addGraph, drawMermaidGraph, isCyclic } from "../graph.js";
+} from "./nodePath.js";
+import { getJsxAST } from "./ast.js";
+import { addGraph, drawMermaidGraph, isCyclic } from "./graph.js";
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
@@ -18,7 +18,7 @@ interface StartArgs {
   output: string;
 }
 
-let APP_FOLDER_PATH = "";
+let APP_FOLDER_PATH = "./app";
 
 export function start({ entryPagePath }: StartArgs) {
   const entry = entryPagePath;
@@ -27,8 +27,8 @@ export function start({ entryPagePath }: StartArgs) {
     console.error(entry, "Entry page does not exist");
     return;
   }
-
-  APP_FOLDER_PATH = entry.replace("/page.tsx", "");
+  // entryPagePath.split("app")[0] + "app";
+  APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
   recursive(entry);
   drawMermaidGraph();
 }
@@ -113,12 +113,7 @@ function recursive(filePath: string) {
       }
 
       if (nextURL && trigger) {
-        const startURL =
-          filePath
-            .replace(APP_FOLDER_PATH, "")
-            .replace("/app", "")
-            .replace("/page.tsx", "") || "/";
-
+        const startURL = filePath.split("app")[1].replace("/page.tsx", "");
         if (isCyclic(startURL, nextURL)) {
           return;
         }
