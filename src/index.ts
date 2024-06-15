@@ -113,7 +113,9 @@ function recursive(filePath: string) {
       }
 
       if (nextURL && trigger) {
-        const startURL = filePath.split("app")[1].replace("/page.tsx", "");
+        const startURL =
+          filePath.split("app")[1].replace("/page.tsx", "") || "/";
+        console.log(filePath, startURL);
         if (isCyclic(startURL, nextURL)) {
           return;
         }
