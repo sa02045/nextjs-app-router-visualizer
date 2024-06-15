@@ -1,49 +1,63 @@
 import fs from "node:fs";
-import prettier from "prettier";
-type Node = {
+
+type Edge = {
+  startURL: string;
   endURL: string;
   trigger: string;
 };
 
-type StartURL = string;
+class Graph {
+  ajdList: Map<string, Edge[]>;
 
-const Graph = new Map<StartURL, Node[]>();
+  constructor() {
+    this.ajdList = new Map();
+  }
 
-export function isCyclic(startURL: string, endURL: string) {
-  const visited = Graph.get(startURL) || [];
-  return visited.some((v) => v.endURL === endURL);
-}
+  addNode(url: string) {
+    this.ajdList.set(url, []);
+  }
 
-export function addGraph(startURL: string, endURL: string, trigger: string) {
-  const visited = Graph.get(startURL) || [];
-  visited.push({ endURL, trigger });
-  Graph.set(startURL, visited);
-}
+  addEdge(startURL: string, edge: Edge) {
+    const visitedEdges = this.ajdList.get(startURL) || [];
+    visitedEdges.push(edge);
+    this.ajdList.set(startURL, visitedEdges);
+  }
 
-export function drawMermaidGraph() {
-  let graph = "flowchart TB\n";
-  Graph.forEach((value, startURL) => {
-    value.forEach((v) => {
-      graph += `${startURL} -->|${v.trigger}| ${v.endURL}\n`;
+  isCycle(startURL: string, edge: Edge) {
+    const visitedEdges = this.ajdList.get(startURL) || [];
+    return visitedEdges.some((visitedEdge) => {
+      return (
+        visitedEdge.endURL === edge.endURL &&
+        visitedEdge.trigger === edge.trigger
+      );
     });
-  });
+  }
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <script type="module">
-      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
-    </script>
-  </head>
-  <body>
-    <pre class="mermaid">
-       ${graph}
-    </pre>
-  </body>
-</html>
-`;
+  drawMermaidGraph() {
+    let mermaidGraph = "flowchart TB\n";
+    this.ajdList.forEach((edges, startURL) => {
+      edges.forEach((edge) => {
+        mermaidGraph += `${startURL} -->|${edge.trigger}| ${edge.endURL}\n`;
+      });
+    });
 
-  prettier.format(html, { parser: "html" }).then((formatHTML) => {
-    fs.writeFileSync("graph.html", formatHTML);
-  });
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <script type="module">
+          import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+        </script>
+      </head>
+      <body>
+        <pre class="mermaid">
+           ${mermaidGraph}
+        </pre>
+      </body>
+    </html>
+    `;
+
+    fs.writeFileSync("graph.html", html);
+  }
 }
+
+export const graph = new Graph();

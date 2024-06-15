@@ -8,7 +8,7 @@ import {
   hasRouterPushJsxAttributeValue,
 } from "./nodePath.js";
 import { getJsxAST } from "./ast.js";
-import { addGraph, drawMermaidGraph, isCyclic } from "./graph.js";
+import { graph } from "./graph.js";
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
@@ -27,10 +27,10 @@ export function start({ entryPagePath }: StartArgs) {
     console.error(entry, "Entry page does not exist");
     return;
   }
-  // entryPagePath.split("app")[0] + "app";
+
   APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
   recursive(entry);
-  drawMermaidGraph();
+  graph.drawMermaidGraph();
 }
 
 function recursive(filePath: string) {
@@ -115,12 +115,16 @@ function recursive(filePath: string) {
       if (nextURL && trigger) {
         const startURL =
           filePath.split("app")[1].replace("/page.tsx", "") || "/";
-        console.log(filePath, startURL);
-        if (isCyclic(startURL, nextURL)) {
+
+        if (graph.isCycle(startURL, { startURL, endURL: nextURL, trigger })) {
           return;
         }
 
-        addGraph(startURL, nextURL, trigger);
+        graph.addEdge(startURL, {
+          startURL,
+          endURL: nextURL,
+          trigger,
+        });
 
         const nextFilePath = nodePath.join(
           APP_FOLDER_PATH,
