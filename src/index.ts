@@ -1,13 +1,18 @@
 import _traverse from "@babel/traverse";
 import fs from "node:fs";
 import nodePath from "node:path";
-import { isLinkNode, parseLinkNode } from "./nodePath.js";
-
 import {
-  hasRouterPush,
-  getPathName,
-  hasRouterPushJsxAttributeValue,
+  getFunctionName,
+  isInArrowFunctionExpression,
+  isInFunctionDeclaration,
+  isInJSXElement,
+  isLinkNode,
+  parseInLineJSXRouterNode,
+  parseLinkNode,
+  parseRouterArguments,
 } from "./nodePath.js";
+
+import { isRouterNode } from "./nodePath.js";
 import { getJsxAST } from "./ast.js";
 import { graph } from "./graph.js";
 
@@ -64,32 +69,19 @@ function recursive(filePath: string) {
     enter(path) {
       let nextURL = "";
       let trigger = "";
-      if (path.isJSXOpeningElement()) {
-        path.traverse({
-          enter(childPath) {
-            const { result, trigger: _trigger } =
-              hasRouterPushJsxAttributeValue(childPath);
-            if (result) {
-              trigger = _trigger;
-            }
-            if (hasRouterPush(childPath)) {
-              nextURL = getPathName(childPath);
-            }
-          },
-        });
-      }
 
-      if (path.isFunctionDeclaration()) {
-        path.traverse({
-          enter(childPath) {
-            if (hasRouterPush(childPath)) {
-              if (componentName !== path.node.id.name) {
-                nextURL = getPathName(childPath);
-                trigger = path.node.id.name;
-              }
-            }
-          },
-        });
+      if (isRouterNode(path)) {
+        if (isInJSXElement(path)) {
+          if (isInArrowFunctionExpression(path)) {
+            trigger = parseInLineJSXRouterNode(path);
+            nextURL = parseRouterArguments(path);
+          }
+        }
+
+        if (!isInJSXElement(path) && isInFunctionDeclaration(path)) {
+          trigger = getFunctionName(path);
+          nextURL = parseRouterArguments(path);
+        }
       }
 
       if (isLinkNode(path)) {

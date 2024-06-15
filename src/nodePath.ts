@@ -1,78 +1,5 @@
 import { type NodePath } from "@babel/traverse";
 
-export function hasRouterPushJsxAttributeValue(path: NodePath) {
-  let result = false;
-  let trigger = "";
-  if (path.isJSXAttribute()) {
-    const key = path.get("name");
-    const value = path.get("value");
-    if (key.isJSXIdentifier() && key.node.name.startsWith("on")) {
-      trigger = key.node.name;
-      value.traverse({
-        enter(childPath) {
-          if (hasRouterPush(childPath)) {
-            result = true;
-          }
-        },
-      });
-    }
-  }
-  return {
-    result,
-    trigger,
-  };
-}
-
-export function hasRouterPush(path: NodePath) {
-  if (
-    path.isCallExpression() &&
-    path.get("callee").isMemberExpression() &&
-    path.get("callee.object").find((p) => p.isIdentifier({ name: "router" })) &&
-    (path
-      .get("callee.property")
-      .find((p) => p.isIdentifier({ name: "push" })) ||
-      path
-        .get("callee.property")
-        .find((p) => p.isIdentifier({ name: "replace" })))
-  ) {
-    return true;
-  }
-  return false;
-}
-
-export function getPathName(routerPath: NodePath) {
-  if (!routerPath.isCallExpression()) {
-    return "";
-  }
-
-  const args = routerPath.get("arguments");
-  const urlStringOrUrlObject = args[0];
-
-  if (urlStringOrUrlObject.isStringLiteral()) {
-    const url = urlStringOrUrlObject.node.value;
-    return url;
-  }
-
-  if (urlStringOrUrlObject.isObjectExpression()) {
-    const urlObject = urlStringOrUrlObject;
-    const properties = urlObject.get("properties");
-    properties.forEach((property) => {
-      if (
-        property.isObjectProperty() &&
-        property.get("key").isIdentifier({ name: "pathname" })
-      ) {
-        const value = property.get("value");
-        if (value.isStringLiteral()) {
-          const url = value.node.value;
-          return url;
-        }
-      }
-    });
-  }
-
-  return "";
-}
-
 export function isLinkNode(path: NodePath) {
   return (
     path.isJSXElement() &&
@@ -101,4 +28,76 @@ export function parseLinkNode(linkNodePath: NodePath) {
   });
 
   return { href, text };
+}
+
+export function isRouterNode(path: NodePath) {
+  return (
+    path.isCallExpression() &&
+    path.get("callee").isMemberExpression() &&
+    path.get("callee.object").find((p) => p.isIdentifier({ name: "router" })) &&
+    (path
+      .get("callee.property")
+      .find((p) => p.isIdentifier({ name: "push" })) ||
+      path
+        .get("callee.property")
+        .find((p) => p.isIdentifier({ name: "replace" })))
+  );
+}
+
+export function parseRouterArguments(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+  const args = routerPath.get("arguments");
+  const urlStringOrUrlObject = args[0];
+  if (urlStringOrUrlObject.isStringLiteral()) {
+    const url = urlStringOrUrlObject.node.value;
+    return url;
+  }
+  return "";
+}
+
+export function isInJSXElement(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+  return routerPath.find((p) => p.isJSXElement());
+}
+
+export function isInArrowFunctionExpression(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+  return routerPath.find((p) => p.isArrowFunctionExpression());
+}
+
+export function isInFunctionDeclaration(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+  return routerPath.find((p) => p.isFunctionDeclaration());
+}
+
+export function getFunctionName(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+
+  let functionName = "";
+
+  routerPath.find((p) => {
+    if (p.isFunctionDeclaration()) {
+      functionName = p.node.id?.name as string;
+      return true;
+    }
+    return false;
+  });
+
+  return functionName;
+}
+
+export function parseInLineJSXRouterNode(routerPath: NodePath) {
+  routerPath.assertCallExpression();
+
+  let handlerName: string = "";
+
+  routerPath.findParent((p) => {
+    if (p.isJSXAttribute()) {
+      handlerName = p.node.name.name as string;
+      return false;
+    }
+    return false;
+  });
+
+  return handlerName;
 }
