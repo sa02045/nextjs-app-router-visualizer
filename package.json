@@ -13,7 +13,8 @@
   ],
   "exports": "./index.js",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "test": "vitest"
   },
   "keywords": [],
   "author": "devjojo",
