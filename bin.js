@@ -7,7 +7,7 @@ const cli = cac('nextjs-app-router-visualizer');
 
 cli.help();
 
-cli.option('--entry -e <entry>', 'Entry file path');
+cli.option('--entry -e <filepath>', 'Entry page file path');
 
 const parsed = cli.parse();
 

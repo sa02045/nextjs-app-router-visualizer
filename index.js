@@ -137,12 +137,8 @@ var graph = new Graph();
 
 // src/constants.ts
 import path from "node:path";
-var APP_PATH_WITHOUT_SRC = path.normalize(
-  path.join(process.cwd(), "app")
-);
-var APP_PATH_WITH_SRC = path.normalize(
-  path.join(process.cwd(), "src", "app")
-);
+var APP_PATH_WITHOUT_SRC = path.normalize(path.join(process.cwd(), "app"));
+var APP_PATH_WITH_SRC = path.normalize(path.join(process.cwd(), "src", "app"));
 
 // src/index.ts
 var traverse = _traverse.default;
@@ -236,11 +232,7 @@ function recursive(filePath) {
           endURL: nextURL,
           trigger
         });
-        const nextFilePath = nodePath.join(
-          APP_FOLDER_PATH,
-          nextURL,
-          "page.tsx"
-        );
+        const nextFilePath = nodePath.join(APP_FOLDER_PATH, nextURL, "page.tsx");
         recursive(nextFilePath);
       }
     }
