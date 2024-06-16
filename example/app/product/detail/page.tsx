@@ -2,18 +2,18 @@
 
 import { useRouter } from 'next/navigation';
 import { Component as UserComponent } from './component';
-import Link from 'next/link';
+
 export default function ProductDetail() {
   const router = useRouter();
 
+  function handle카드결제하기() {
+    router.push('/payment/card');
+  }
+
   return (
     <div>
-      <h1>Home Page</h1>
-      <UserComponent
-        onNext={() => {
-          router.push('/product/123123');
-        }}
-      ></UserComponent>
+      <h1>Product Detail Page</h1>
+      <UserComponent onNext={handle카드결제하기}></UserComponent>
     </div>
   );
 }
