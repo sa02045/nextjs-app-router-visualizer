@@ -4,30 +4,30 @@ import fs3 from "node:fs";
 import nodePath from "node:path";
 
 // src/nodePath.ts
-function isLinkNode(path) {
-  return path.isJSXElement() && path.get("openingElement").get("name").isJSXIdentifier({ name: "Link" });
+function isLinkNode(path2) {
+  return path2.isJSXElement() && path2.get("openingElement").get("name").isJSXIdentifier({ name: "Link" });
 }
 function parseLinkNode(linkNodePath) {
   let href = "";
   let text = "";
   linkNodePath.traverse({
-    enter(path) {
-      if (path.isJSXAttribute()) {
-        const name = path.get("name");
-        const value = path.get("value");
+    enter(path2) {
+      if (path2.isJSXAttribute()) {
+        const name = path2.get("name");
+        const value = path2.get("value");
         if (name.isJSXIdentifier({ name: "href" }) && value.isStringLiteral()) {
           href = value.node.value;
         }
       }
-      if (path.isJSXText()) {
-        text = path.node.value;
+      if (path2.isJSXText()) {
+        text = path2.node.value;
       }
     }
   });
   return { href, text };
 }
-function isRouterNode(path) {
-  return path.isCallExpression() && path.get("callee").isMemberExpression() && path.get("callee.object").find((p) => p.isIdentifier({ name: "router" })) && (path.get("callee.property").find((p) => p.isIdentifier({ name: "push" })) || path.get("callee.property").find((p) => p.isIdentifier({ name: "replace" })));
+function isRouterNode(path2) {
+  return path2.isCallExpression() && path2.get("callee").isMemberExpression() && path2.get("callee.object").find((p) => p.isIdentifier({ name: "router" })) && (path2.get("callee.property").find((p) => p.isIdentifier({ name: "push" })) || path2.get("callee.property").find((p) => p.isIdentifier({ name: "replace" })));
 }
 function parseRouterArguments(routerPath) {
   routerPath.assertCallExpression();
@@ -79,8 +79,8 @@ function parseInLineJSXRouterNode(routerPath) {
 // src/ast.ts
 import { parse } from "@babel/parser";
 import fs from "node:fs";
-function getJsxAST(path) {
-  const code = fs.readFileSync(path, "utf-8");
+function getJsxAST(path2) {
+  const code = fs.readFileSync(path2, "utf-8");
   return parse(code, {
     sourceType: "module",
     plugins: ["jsx"]
@@ -135,12 +135,31 @@ var Graph = class {
 };
 var graph = new Graph();
 
+// src/constants.ts
+import path from "node:path";
+var APP_PATH_WITHOUT_SRC = path.normalize(
+  path.join(process.cwd(), "app")
+);
+var APP_PATH_WITH_SRC = path.normalize(
+  path.join(process.cwd(), "src", "app")
+);
+
 // src/index.ts
 var traverse = _traverse.default;
-var APP_FOLDER_PATH = "./app";
+var APP_FOLDER_PATH = "";
 function start({ entryPagePath }) {
+  if (!entryPagePath) {
+    if (fs3.existsSync(APP_PATH_WITH_SRC)) {
+      entryPagePath = APP_PATH_WITH_SRC;
+    } else if (fs3.existsSync(APP_PATH_WITHOUT_SRC)) {
+      entryPagePath = APP_PATH_WITHOUT_SRC;
+    } else {
+      console.error("Can't find entry page file. Use --entry flag to specify");
+      return;
+    }
+  }
   if (!fs3.existsSync(entryPagePath)) {
-    console.error(entryPagePath, "Entry page does not exist");
+    console.error("Can't find entry page file");
     return;
   }
   APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
@@ -172,14 +191,14 @@ function recursive(filePath) {
   const ast = getJsxAST(filePath);
   let componentName = "";
   traverse(ast, {
-    enter(path) {
-      if (path.isExportDefaultDeclaration()) {
-        path.traverse({
+    enter(path2) {
+      if (path2.isExportDefaultDeclaration()) {
+        path2.traverse({
           enter(childPath) {
             if (childPath.isFunctionDeclaration()) {
               componentName = childPath.node.id.name;
               childPath.stop();
-              path.stop();
+              path2.stop();
             }
           }
         });
@@ -187,23 +206,23 @@ function recursive(filePath) {
     }
   });
   traverse(ast, {
-    enter(path) {
+    enter(path2) {
       let nextURL = "";
       let trigger = "";
-      if (isRouterNode(path)) {
-        if (isInJSXElement(path)) {
-          if (isInArrowFunctionExpression(path)) {
-            trigger = parseInLineJSXRouterNode(path);
-            nextURL = parseRouterArguments(path);
+      if (isRouterNode(path2)) {
+        if (isInJSXElement(path2)) {
+          if (isInArrowFunctionExpression(path2)) {
+            trigger = parseInLineJSXRouterNode(path2);
+            nextURL = parseRouterArguments(path2);
           }
         }
-        if (!isInJSXElement(path) && isInFunctionDeclaration(path)) {
-          trigger = getFunctionName(path);
-          nextURL = parseRouterArguments(path);
+        if (!isInJSXElement(path2) && isInFunctionDeclaration(path2)) {
+          trigger = getFunctionName(path2);
+          nextURL = parseRouterArguments(path2);
         }
       }
-      if (isLinkNode(path)) {
-        const linkInfo = parseLinkNode(path);
+      if (isLinkNode(path2)) {
+        const linkInfo = parseLinkNode(path2);
         nextURL = linkInfo.href;
         trigger = linkInfo.text;
       }
