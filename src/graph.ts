@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fs from 'node:fs';
 
 type Edge = {
   startURL: string;
@@ -25,18 +25,15 @@ class Graph {
 
   isCycle(startURL: string, edge: Edge) {
     const visitedEdges = this.ajdList.get(startURL) || [];
-    return visitedEdges.some((visitedEdge) => {
-      return (
-        visitedEdge.endURL === edge.endURL &&
-        visitedEdge.trigger === edge.trigger
-      );
+    return visitedEdges.some(visitedEdge => {
+      return visitedEdge.endURL === edge.endURL && visitedEdge.trigger === edge.trigger;
     });
   }
 
   drawMermaidGraph() {
-    let mermaidGraph = "flowchart TB\n";
+    let mermaidGraph = 'flowchart TB\n';
     this.ajdList.forEach((edges, startURL) => {
-      edges.forEach((edge) => {
+      edges.forEach(edge => {
         mermaidGraph += `${startURL} -->|${edge.trigger}| ${edge.endURL}\n`;
       });
     });
@@ -56,7 +53,7 @@ class Graph {
     </html>
     `;
 
-    fs.writeFileSync("graph.html", html);
+    fs.writeFileSync('graph.html', html);
   }
 }
 

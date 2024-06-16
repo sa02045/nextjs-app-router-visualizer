@@ -1,6 +1,6 @@
-import _traverse from "@babel/traverse";
-import fs from "node:fs";
-import nodePath from "node:path";
+import _traverse from '@babel/traverse';
+import fs from 'node:fs';
+import nodePath from 'node:path';
 import {
   getFunctionName,
   isInArrowFunctionExpression,
@@ -10,12 +10,12 @@ import {
   parseInLineJSXRouterNode,
   parseLinkNode,
   parseRouterArguments,
-} from "./nodePath.js";
+} from './nodePath.js';
 
-import { isRouterNode } from "./nodePath.js";
-import { getJsxAST } from "./ast.js";
-import { graph } from "./graph.js";
-import { APP_PATH_WITHOUT_SRC, APP_PATH_WITH_SRC } from "./constants.js";
+import { isRouterNode } from './nodePath.js';
+import { getJsxAST } from './ast.js';
+import { graph } from './graph.js';
+import { APP_PATH_WITHOUT_SRC, APP_PATH_WITH_SRC } from './constants.js';
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
@@ -25,7 +25,7 @@ interface StartArgs {
   output: string;
 }
 
-let APP_FOLDER_PATH = "";
+let APP_FOLDER_PATH = '';
 
 export function start({ entryPagePath }: StartArgs) {
   if (!entryPagePath) {
@@ -43,22 +43,22 @@ export function start({ entryPagePath }: StartArgs) {
     return;
   }
 
-  APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
+  APP_FOLDER_PATH = nodePath.join(entryPagePath.split('app')[0], 'app');
   recursive(entryPagePath);
 
   graph.drawMermaidGraph();
 }
 
 function getDynamicRouteFolder(filePath: string) {
-  const paths = filePath.replace("/page.tsx", "").split("/");
+  const paths = filePath.replace('/page.tsx', '').split('/');
   paths.pop();
-  const folderPath = [...paths].join("/");
+  const folderPath = [...paths].join('/');
 
   let dynamicRoute = null;
 
-  fs.readdirSync(folderPath).forEach((file) => {
-    if (file.startsWith("[") && file.endsWith("]")) {
-      dynamicRoute = folderPath + "/" + file;
+  fs.readdirSync(folderPath).forEach(file => {
+    if (file.startsWith('[') && file.endsWith(']')) {
+      dynamicRoute = folderPath + '/' + file;
     }
   });
 
@@ -69,16 +69,16 @@ function recursive(filePath: string) {
   if (!fs.existsSync(filePath)) {
     const folderName = getDynamicRouteFolder(filePath);
     if (folderName) {
-      filePath = folderName + "/page.tsx";
+      filePath = folderName + '/page.tsx';
     } else {
-      console.error(filePath, "File does not exist");
+      console.error(filePath, 'File does not exist');
       return;
     }
   }
 
   const ast = getJsxAST(filePath);
 
-  let componentName: string = "";
+  let componentName: string = '';
 
   traverse(ast, {
     enter(path) {
@@ -98,8 +98,8 @@ function recursive(filePath: string) {
 
   traverse(ast, {
     enter(path) {
-      let nextURL = "";
-      let trigger = "";
+      let nextURL = '';
+      let trigger = '';
 
       if (isRouterNode(path)) {
         if (isInJSXElement(path)) {
@@ -122,8 +122,7 @@ function recursive(filePath: string) {
       }
 
       if (nextURL && trigger) {
-        const startURL =
-          filePath.split("app")[1].replace("/page.tsx", "") || "/";
+        const startURL = filePath.split('app')[1].replace('/page.tsx', '') || '/';
 
         if (graph.isCycle(startURL, { startURL, endURL: nextURL, trigger })) {
           return;
@@ -135,11 +134,7 @@ function recursive(filePath: string) {
           trigger,
         });
 
-        const nextFilePath = nodePath.join(
-          APP_FOLDER_PATH,
-          nextURL,
-          "page.tsx"
-        );
+        const nextFilePath = nodePath.join(APP_FOLDER_PATH, nextURL, 'page.tsx');
 
         recursive(nextFilePath);
       }

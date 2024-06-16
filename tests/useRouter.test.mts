@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import parser from "@babel/parser";
-import traverse from "@babel/traverse";
+import { describe, it, expect } from 'vitest';
+import parser from '@babel/parser';
+import traverse from '@babel/traverse';
 import {
   isRouterNode,
   isInArrowFunctionExpression,
@@ -9,9 +9,9 @@ import {
   parseInLineJSXRouterNode,
   parseRouterArguments,
   getFunctionName,
-} from "../src/nodePath";
+} from '../src/nodePath';
 
-describe("router.push()", () => {
+describe('router.push()', () => {
   const codeWithRouterPush = `
     import { useRouter } from "next/router";
      function Product() {
@@ -38,16 +38,16 @@ describe("router.push()", () => {
 
 `;
   const ast = parser.parse(codeWithRouterPush, {
-    sourceType: "module",
-    plugins: ["jsx"],
+    sourceType: 'module',
+    plugins: ['jsx'],
   });
 
   const astWithRouterReplace = parser.parse(codeWithRouterReplace, {
-    sourceType: "module",
-    plugins: ["jsx"],
+    sourceType: 'module',
+    plugins: ['jsx'],
   });
 
-  it("should find router.push()", () => {
+  it('should find router.push()', () => {
     let result = false;
     traverse(ast, {
       enter(path) {
@@ -60,7 +60,7 @@ describe("router.push()", () => {
     expect(result).toBe(true);
   });
 
-  it("should find router.replace()", () => {
+  it('should find router.replace()', () => {
     let result = false;
     traverse(astWithRouterReplace, {
       enter(path) {
@@ -73,7 +73,7 @@ describe("router.push()", () => {
     expect(result).toBe(true);
   });
 
-  it("should find router.push() in JSX inline", () => {
+  it('should find router.push() in JSX inline', () => {
     let handlerNames: string[] = [];
     let urls: string[] = [];
     const ast = parser.parse(
@@ -90,8 +90,8 @@ describe("router.push()", () => {
     }
     `,
       {
-        sourceType: "module",
-        plugins: ["jsx"],
+        sourceType: 'module',
+        plugins: ['jsx'],
       }
     );
 
@@ -109,11 +109,11 @@ describe("router.push()", () => {
         }
       },
     });
-    expect(handlerNames).toEqual(["onClick", "onTest"]);
-    expect(urls).toEqual(["/about", "/home"]);
+    expect(handlerNames).toEqual(['onClick', 'onTest']);
+    expect(urls).toEqual(['/about', '/home']);
   });
 
-  it("should find router.push() in function declare", () => {
+  it('should find router.push() in function declare', () => {
     let handlerNames: string[] = [];
     let urls: string[] = [];
     const ast = parser.parse(
@@ -134,8 +134,8 @@ describe("router.push()", () => {
     }
     `,
       {
-        sourceType: "module",
-        plugins: ["jsx"],
+        sourceType: 'module',
+        plugins: ['jsx'],
       }
     );
 
@@ -153,7 +153,7 @@ describe("router.push()", () => {
         }
       },
     });
-    expect(handlerNames).toEqual(["handleClick"]);
-    expect(urls).toEqual(["/about"]);
+    expect(handlerNames).toEqual(['handleClick']);
+    expect(urls).toEqual(['/about']);
   });
 });
