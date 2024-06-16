@@ -15,6 +15,7 @@ import {
 import { isRouterNode } from "./nodePath.js";
 import { getJsxAST } from "./ast.js";
 import { graph } from "./graph.js";
+import { APP_PATH_WITHOUT_SRC, APP_PATH_WITH_SRC } from "./constants.js";
 
 // @ts-ignore
 const traverse = _traverse.default as typeof _traverse;
@@ -24,16 +25,25 @@ interface StartArgs {
   output: string;
 }
 
-let APP_FOLDER_PATH = "./app";
+let APP_FOLDER_PATH = "";
 
 export function start({ entryPagePath }: StartArgs) {
+  if (!entryPagePath) {
+    if (fs.existsSync(APP_PATH_WITH_SRC)) {
+      entryPagePath = APP_PATH_WITH_SRC;
+    } else if (fs.existsSync(APP_PATH_WITHOUT_SRC)) {
+      entryPagePath = APP_PATH_WITHOUT_SRC;
+    } else {
+      console.error("Can't find entry page file. Use --entry flag to specify");
+      return;
+    }
+  }
   if (!fs.existsSync(entryPagePath)) {
-    console.error(entryPagePath, "Entry page does not exist");
+    console.error("Can't find entry page file");
     return;
   }
 
   APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
-
   recursive(entryPagePath);
 
   graph.drawMermaidGraph();
