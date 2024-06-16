@@ -4,6 +4,11 @@
 
 `Current status: experimental`
 
+## What is this?
+
+- **nextjs-app-router-visualizer** is a tool that helps you visualize the flow of your Next.js website.
+- It helps you to understand the flow of your website by visualizing the page flow.
+
 ## Usage
 
 In your Next.js App router project root
