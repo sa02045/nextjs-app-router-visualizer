@@ -4,7 +4,7 @@ export default function Product() {
   const router = useRouter();
   return (
     <div>
-      <button onClick={() => router.push('/products/detail')}>Products Detail</button>
+      <button onClick={() => router.push('/product/detail')}>Products Detail</button>
     </div>
   );
 }
