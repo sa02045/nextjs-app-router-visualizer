@@ -1,6 +1,6 @@
 # nextjs-app-router-visualizer
 
-**Visualize** your Next.js website
+**Visualize** your Next.js website Flow
 
 `Current status: experimental`
 
