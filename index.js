@@ -158,8 +158,8 @@ function start({ entryPagePath }) {
     console.error("Can't find entry page file");
     return;
   }
-  APP_FOLDER_PATH = nodePath.join(entryPagePath.split("app")[0], "app");
-  recursive(entryPagePath);
+  APP_FOLDER_PATH = nodePath.normalize(nodePath.join(entryPagePath.split("app")[0], "app"));
+  recursive(nodePath.normalize(entryPagePath));
   graph.drawMermaidGraph();
 }
 function getDynamicRouteFolder(filePath) {
@@ -178,7 +178,7 @@ function recursive(filePath) {
   if (!fs3.existsSync(filePath)) {
     const folderName = getDynamicRouteFolder(filePath);
     if (folderName) {
-      filePath = folderName + "/page.tsx";
+      filePath = nodePath.join(folderName, "page.tsx");
     } else {
       console.error(filePath, "File does not exist");
       return;
@@ -223,7 +223,7 @@ function recursive(filePath) {
         trigger = linkInfo.text;
       }
       if (nextURL && trigger) {
-        const startURL = filePath.split("app")[1].replace("/page.tsx", "") || "/";
+        const startURL = nodePath.dirname(filePath).replace(APP_FOLDER_PATH, "") || "/";
         if (graph.isCycle(startURL, { startURL, endURL: nextURL, trigger })) {
           return;
         }
