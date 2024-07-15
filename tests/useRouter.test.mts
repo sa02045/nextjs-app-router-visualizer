@@ -9,7 +9,7 @@ import {
   parseInLineJSXRouterNode,
   parseRouterArguments,
   getFunctionName,
-} from '../src/nodePath';
+} from '../src/node';
 
 describe('router.push()', () => {
   const codeWithRouterPush = `
