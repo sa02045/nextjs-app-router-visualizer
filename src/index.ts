@@ -43,8 +43,20 @@ export function start({ entryPagePath }: StartArgs) {
     return;
   }
 
-  APP_FOLDER_PATH = nodePath.normalize(nodePath.join(entryPagePath.split('app')[0], 'app'));
-  recursive(nodePath.normalize(entryPagePath));
+  const normalizedPath = nodePath.normalize(entryPagePath);
+  const pathParts = normalizedPath.split(nodePath.sep);
+
+  const appIndex = pathParts.findIndex(part => part === 'app');
+
+  if (appIndex === -1) {
+    console.error("Cannot find 'app' directory in the entry path:", entryPagePath);
+    return;
+  }
+
+  APP_FOLDER_PATH = pathParts.slice(0, appIndex + 1).join(nodePath.sep);
+  console.log('Using APP_FOLDER_PATH:', APP_FOLDER_PATH);
+
+  recursive(normalizedPath);
 
   graph.drawMermaidGraph();
 }
