@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import open from 'open';
 
 type Edge = {
   startURL: string;
@@ -54,6 +55,7 @@ class Graph {
     `;
 
     fs.writeFileSync('graph.html', html);
+    open('graph.html');
   }
 }
 
