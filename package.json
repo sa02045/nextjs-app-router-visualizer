@@ -3,15 +3,14 @@
   "version": "0.0.17",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
-    "nextjs-app-router-visualizer": "bin.js"
+    "nextjs-app-router-visualizer": "dist/bin.js"
   },
   "files": [
-    "index.js",
-    "bin.js"
+    "dist"
   ],
-  "exports": "./index.js",
+  "exports": "./dist/index.js",
   "scripts": {
     "build": "tsup",
     "test": "vitest"
