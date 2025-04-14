@@ -10,9 +10,9 @@ import {
   parseInLineJSXRouterNode,
   parseLinkNode,
   parseRouterArguments,
-} from './nodePath.js';
+} from './node';
 
-import { isRouterNode } from './nodePath.js';
+import { isRouterNode } from './node';
 import { getJsxAST } from './ast.js';
 import { graph } from './graph.js';
 import { APP_PATH_WITHOUT_SRC, APP_PATH_WITH_SRC } from './constants.js';
