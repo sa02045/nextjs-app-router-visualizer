@@ -24,7 +24,7 @@ class Graph {
     this.ajdList.set(startURL, visitedEdges);
   }
 
-  isCycle(startURL: string, edge: Edge) {
+  isDuplicateEdge(startURL: string, edge: Edge) {
     const visitedEdges = this.ajdList.get(startURL) || [];
     return visitedEdges.some(visitedEdge => {
       return visitedEdge.endURL === edge.endURL && visitedEdge.trigger === edge.trigger;
