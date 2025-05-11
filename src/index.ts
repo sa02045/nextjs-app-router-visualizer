@@ -136,7 +136,7 @@ function recursive(filePath: string) {
       if (nextURL && trigger) {
         const startURL = nodePath.dirname(filePath).replace(APP_FOLDER_PATH, '') || '/';
 
-        if (graph.isCycle(startURL, { startURL, endURL: nextURL, trigger })) {
+        if (graph.isDuplicateEdge(startURL, { startURL, endURL: nextURL, trigger })) {
           return;
         }
 
