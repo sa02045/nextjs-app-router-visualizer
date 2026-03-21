@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import traverse from '@babel/traverse';
-import { isRouterNode, parseRouterArguments } from '../src/node';
+import { isRouterMethodCall, getRouterMethodName, parseRouterArguments } from '../src/node';
 import { parseTestCode } from './helpers';
+
+function isRouterPushOrReplace(path: Parameters<Parameters<typeof traverse>[1]['enter'] & Function>[0]) {
+  if (!isRouterMethodCall(path)) return false;
+  const m = getRouterMethodName(path);
+  return m === 'push' || m === 'replace';
+}
 
 describe('URL extraction', () => {
   it('should extract URL from template literal', () => {
     const ast = parseTestCode(`
+      import { useRouter } from "next/navigation";
       function Product() {
         const router = useRouter();
         const id = "123";
@@ -16,7 +23,7 @@ describe('URL extraction', () => {
     let url = '';
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           url = parseRouterArguments(path);
           path.stop();
         }
@@ -28,6 +35,7 @@ describe('URL extraction', () => {
 
   it('should resolve simple variable reference', () => {
     const ast = parseTestCode(`
+      import { useRouter } from "next/navigation";
       function Product() {
         const router = useRouter();
         const targetUrl = "/about";
@@ -38,7 +46,7 @@ describe('URL extraction', () => {
     let url = '';
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           url = parseRouterArguments(path);
           path.stop();
         }
@@ -50,6 +58,7 @@ describe('URL extraction', () => {
 
   it('should return empty string for unresolvable expressions', () => {
     const ast = parseTestCode(`
+      import { useRouter } from "next/navigation";
       function Product() {
         const router = useRouter();
         router.push(getUrl());
@@ -59,7 +68,7 @@ describe('URL extraction', () => {
     let url = '';
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           url = parseRouterArguments(path);
           path.stop();
         }
