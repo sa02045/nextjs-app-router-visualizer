@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import parser from '@babel/parser';
 import traverse from '@babel/traverse';
 import {
   isRouterNode,
@@ -10,6 +9,7 @@ import {
   parseRouterArguments,
   getFunctionName,
 } from '../src/node';
+import { parseTestCode } from './helpers';
 
 describe('router.push()', () => {
   const codeWithRouterPush = `
@@ -37,15 +37,9 @@ describe('router.push()', () => {
     }
 
 `;
-  const ast = parser.parse(codeWithRouterPush, {
-    sourceType: 'module',
-    plugins: ['jsx'],
-  });
+  const ast = parseTestCode(codeWithRouterPush);
 
-  const astWithRouterReplace = parser.parse(codeWithRouterReplace, {
-    sourceType: 'module',
-    plugins: ['jsx'],
-  });
+  const astWithRouterReplace = parseTestCode(codeWithRouterReplace);
 
   it('should find router.push()', () => {
     let result = false;
@@ -76,8 +70,7 @@ describe('router.push()', () => {
   it('should find router.push() in JSX inline', () => {
     let handlerNames: string[] = [];
     let urls: string[] = [];
-    const ast = parser.parse(
-      `
+    const ast = parseTestCode(`
     import { useRouter } from "next/router";
      function Product() {
         const router = useRouter();
@@ -88,12 +81,7 @@ describe('router.push()', () => {
            </div>
         );
     }
-    `,
-      {
-        sourceType: 'module',
-        plugins: ['jsx'],
-      }
-    );
+    `);
 
     traverse(ast, {
       enter(path) {
@@ -116,8 +104,7 @@ describe('router.push()', () => {
   it('should find router.push() in function declare', () => {
     let handlerNames: string[] = [];
     let urls: string[] = [];
-    const ast = parser.parse(
-      `
+    const ast = parseTestCode(`
     import { useRouter } from "next/router";
      function Product() {
         const router = useRouter();
@@ -132,12 +119,7 @@ describe('router.push()', () => {
            </div>
         );
     }
-    `,
-      {
-        sourceType: 'module',
-        plugins: ['jsx'],
-      }
-    );
+    `);
 
     traverse(ast, {
       enter(path) {

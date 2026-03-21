@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import parser from '@babel/parser';
-import traverse, { NodePath } from '@babel/traverse';
+import traverse from '@babel/traverse';
+import { isLinkNode, parseLinkNode } from '../src/node';
+import { parseTestCode } from './helpers';
 
 describe('LinkComponent', () => {
   const codeWithLinkComponent = `
@@ -28,10 +29,7 @@ describe('LinkComponent', () => {
     }
     `;
 
-  const ast = parser.parse(codeWithLinkComponent, {
-    sourceType: 'module',
-    plugins: ['jsx'],
-  });
+  const ast = parseTestCode(codeWithLinkComponent);
 
   it('should find Link component', () => {
     let result = false;
@@ -48,10 +46,7 @@ describe('LinkComponent', () => {
 
   it('should not find Link component', () => {
     let result = false;
-    const astWithoutLinkComponent = parser.parse(codeWithoutLinkComponent, {
-      sourceType: 'module',
-      plugins: ['jsx'],
-    });
+    const astWithoutLinkComponent = parseTestCode(codeWithoutLinkComponent);
     traverse(astWithoutLinkComponent, {
       enter(path) {
         if (isLinkNode(path)) {
@@ -76,30 +71,3 @@ describe('LinkComponent', () => {
     expect(linkInfo).toEqual({ href: '/about', text: '테스트' });
   });
 });
-
-function isLinkNode(path: NodePath) {
-  return path.isJSXElement() && path.get('openingElement').get('name').isJSXIdentifier({ name: 'Link' });
-}
-
-function parseLinkNode(linkNode: NodePath) {
-  let href = '';
-  let text = '';
-
-  linkNode.traverse({
-    enter(path) {
-      if (path.isJSXAttribute()) {
-        const name = path.get('name');
-        const value = path.get('value');
-        if (name.isJSXIdentifier({ name: 'href' }) && value.isStringLiteral()) {
-          href = value.node.value;
-        }
-      }
-
-      if (path.isJSXText()) {
-        text = path.node.value;
-      }
-    },
-  });
-
-  return { href, text };
-}

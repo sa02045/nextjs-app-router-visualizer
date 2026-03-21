@@ -1,38 +1,30 @@
-import _traverse from '@babel/traverse';
 import fs from 'node:fs';
 import nodePath from 'node:path';
-import {
-  getFunctionName,
-  isInArrowFunctionExpression,
-  isInFunctionDeclaration,
-  isInJSXElement,
-  isLinkNode,
-  parseInLineJSXRouterNode,
-  parseLinkNode,
-  parseRouterArguments,
-} from './node';
-
-import { isRouterNode } from './node';
-import { getJsxAST } from './ast.js';
-import { graph } from './graph.js';
-import { APP_PATH_WITHOUT_SRC, APP_PATH_WITH_SRC } from './constants.js';
-
-// @ts-ignore
-const traverse = _traverse.default as typeof _traverse;
+import { parseSourceFile } from './ast.js';
+import { analyzeFile } from './analyzer.js';
+import { Graph, type OutputFormat } from './graph.js';
+import { findPageFile } from './utils.js';
 
 interface StartArgs {
   entryPagePath: string;
   output: string;
+  format?: OutputFormat;
 }
 
-let APP_FOLDER_PATH = '';
+interface TraversalContext {
+  appFolderPath: string;
+  graph: Graph;
+  visited: Set<string>;
+}
 
-export function start({ entryPagePath }: StartArgs) {
+export function start({ entryPagePath, format = 'html' }: StartArgs) {
   if (!entryPagePath) {
-    if (fs.existsSync(APP_PATH_WITH_SRC)) {
-      entryPagePath = APP_PATH_WITH_SRC;
-    } else if (fs.existsSync(APP_PATH_WITHOUT_SRC)) {
-      entryPagePath = APP_PATH_WITHOUT_SRC;
+    const cwdApp = nodePath.join(process.cwd(), 'src', 'app');
+    const cwdAppNoSrc = nodePath.join(process.cwd(), 'app');
+
+    const found = findPageFile(cwdApp) || findPageFile(cwdAppNoSrc);
+    if (found) {
+      entryPagePath = found;
     } else {
       console.error("Can't find entry page file. Use --entry flag to specify");
       return;
@@ -53,103 +45,91 @@ export function start({ entryPagePath }: StartArgs) {
     return;
   }
 
-  APP_FOLDER_PATH = pathParts.slice(0, appIndex + 1).join(nodePath.sep);
-  console.log('Using APP_FOLDER_PATH:', APP_FOLDER_PATH);
+  const appFolderPath = pathParts.slice(0, appIndex + 1).join(nodePath.sep);
+  console.log('Using APP_FOLDER_PATH:', appFolderPath);
 
-  recursive(normalizedPath);
+  const context: TraversalContext = {
+    appFolderPath,
+    graph: new Graph(),
+    visited: new Set(),
+  };
 
-  graph.drawMermaidGraph();
+  recursive(normalizedPath, context);
+
+  context.graph.drawMermaidGraph(format);
 }
 
-function getDynamicRouteFolder(filePath: string) {
-  const paths = filePath.replace('/page.tsx', '').split('/');
-  paths.pop();
-  const folderPath = [...paths].join('/');
+function getDynamicRouteFolder(dir: string): string | null {
+  let dynamicRoute: string | null = null;
 
-  let dynamicRoute = null;
-
-  fs.readdirSync(folderPath).forEach(file => {
-    if (file.startsWith('[') && file.endsWith(']')) {
-      dynamicRoute = folderPath + '/' + file;
-    }
-  });
+  try {
+    fs.readdirSync(dir).forEach(file => {
+      if (file.startsWith('[') && file.endsWith(']')) {
+        dynamicRoute = nodePath.join(dir, file);
+      }
+    });
+  } catch {
+    return null;
+  }
 
   return dynamicRoute;
 }
 
-function recursive(filePath: string) {
-  if (!fs.existsSync(filePath)) {
-    const folderName = getDynamicRouteFolder(filePath);
-    if (folderName) {
-      filePath = nodePath.join(folderName, 'page.tsx');
-    } else {
-      console.error(filePath, 'File does not exist');
-      return;
-    }
+function resolvePagePath(dir: string): string | null {
+  // Try direct page file lookup
+  const pageFile = findPageFile(dir);
+  if (pageFile) return pageFile;
+
+  // Try dynamic route folder
+  const dynamicFolder = getDynamicRouteFolder(dir);
+  if (dynamicFolder) {
+    return findPageFile(dynamicFolder);
   }
 
-  const ast = getJsxAST(filePath);
-
-  let componentName: string = '';
-
-  traverse(ast, {
-    enter(path) {
-      if (path.isExportDefaultDeclaration()) {
-        path.traverse({
-          enter(childPath) {
-            if (childPath.isFunctionDeclaration()) {
-              componentName = childPath.node.id.name;
-              childPath.stop();
-              path.stop();
-            }
-          },
-        });
+  // Try route group subdirectories: (group)/page.tsx
+  try {
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.match(/^\(.*\)$/)) {
+        const groupFile = findPageFile(nodePath.join(dir, entry));
+        if (groupFile) return groupFile;
       }
-    },
-  });
+    }
+  } catch {
+    // directory doesn't exist
+  }
 
-  traverse(ast, {
-    enter(path) {
-      let nextURL = '';
-      let trigger = '';
+  return null;
+}
 
-      if (isRouterNode(path)) {
-        if (isInJSXElement(path)) {
-          if (isInArrowFunctionExpression(path)) {
-            trigger = parseInLineJSXRouterNode(path);
-            nextURL = parseRouterArguments(path);
-          }
-        }
+function recursive(filePath: string, context: TraversalContext) {
+  const resolvedPath = nodePath.resolve(filePath);
+  if (context.visited.has(resolvedPath)) return;
+  context.visited.add(resolvedPath);
 
-        if (!isInJSXElement(path) && isInFunctionDeclaration(path)) {
-          trigger = getFunctionName(path);
-          nextURL = parseRouterArguments(path);
-        }
-      }
+  if (!fs.existsSync(filePath)) {
+    console.error(filePath, 'File does not exist');
+    return;
+  }
 
-      if (isLinkNode(path)) {
-        const linkInfo = parseLinkNode(path);
-        nextURL = linkInfo.href;
-        trigger = linkInfo.text;
-      }
+  const ast = parseSourceFile(filePath);
+  if (!ast) return;
 
-      if (nextURL && trigger) {
-        const startURL = nodePath.dirname(filePath).replace(APP_FOLDER_PATH, '') || '/';
+  const edges = analyzeFile(ast, filePath, context.appFolderPath);
 
-        if (graph.isDuplicateEdge(startURL, { startURL, endURL: nextURL, trigger })) {
-          return;
-        }
+  for (const edge of edges) {
+    if (context.graph.isDuplicateEdge(edge.startURL, edge)) {
+      continue;
+    }
 
-        graph.addEdge(startURL, {
-          startURL,
-          endURL: nextURL,
-          trigger,
-        });
+    context.graph.addEdge(edge.startURL, edge);
 
-        const nextFilePath = nodePath.join(APP_FOLDER_PATH, nextURL, 'page.tsx');
+    const nextDir = nodePath.join(context.appFolderPath, edge.endURL);
+    const nextFilePath = resolvePagePath(nextDir);
 
-        recursive(nextFilePath);
-      }
-    },
-  });
+    if (nextFilePath) {
+      recursive(nextFilePath, context);
+    } else {
+      console.error(`Page file not found in ${nextDir}`);
+    }
+  }
 }

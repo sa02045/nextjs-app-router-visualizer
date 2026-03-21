@@ -5,12 +5,12 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "noImplicitAny": false,
-    "alwaysStrict": true,
-    "strictNullChecks": false,
+    "strict": true,
+    "allowJs": true,
+    "sourceMap": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts"]
 }
