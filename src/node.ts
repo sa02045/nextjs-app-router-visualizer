@@ -1,5 +1,7 @@
 import { type NodePath } from '@babel/traverse';
 
+// ── Link Component Detection ──
+
 export function isLinkNode(path: NodePath) {
   return path.isJSXElement() && path.get('openingElement').get('name').isJSXIdentifier({ name: 'Link' });
 }
@@ -27,6 +29,8 @@ export function parseLinkNode(linkNodePath: NodePath) {
   return { href, text };
 }
 
+// ── Router Detection (router.push / router.replace) ──
+
 export function isRouterNode(path: NodePath) {
   return (
     path.isCallExpression() &&
@@ -40,12 +44,8 @@ export function isRouterNode(path: NodePath) {
 export function parseRouterArguments(routerPath: NodePath) {
   routerPath.assertCallExpression();
   const args = routerPath.get('arguments');
-  const urlStringOrUrlObject = args[0];
-  if (urlStringOrUrlObject.isStringLiteral()) {
-    const url = urlStringOrUrlObject.node.value;
-    return url;
-  }
-  return '';
+  const firstArg = args[0];
+  return extractURLFromExpression(firstArg);
 }
 
 export function isInJSXElement(routerPath: NodePath) {
@@ -70,7 +70,7 @@ export function getFunctionName(routerPath: NodePath) {
 
   routerPath.find(p => {
     if (p.isFunctionDeclaration()) {
-      functionName = p.node.id?.name as string;
+      functionName = p.node.id?.name ?? '';
       return true;
     }
     return false;
@@ -87,10 +87,66 @@ export function parseInLineJSXRouterNode(routerPath: NodePath) {
   routerPath.findParent(p => {
     if (p.isJSXAttribute()) {
       handlerName = p.node.name.name as string;
-      return false;
+      return true;
     }
     return false;
   });
 
   return handlerName;
+}
+
+// ── redirect() Detection ──
+
+export function isRedirectCall(path: NodePath) {
+  return path.isCallExpression() && path.get('callee').isIdentifier({ name: 'redirect' });
+}
+
+export function parseRedirectArguments(path: NodePath): string {
+  path.assertCallExpression();
+  const args = path.get('arguments');
+  const firstArg = args[0];
+  return extractURLFromExpression(firstArg);
+}
+
+// ── notFound() Detection ──
+
+export function isNotFoundCall(path: NodePath) {
+  return path.isCallExpression() && path.get('callee').isIdentifier({ name: 'notFound' });
+}
+
+// ── URL Extraction Utilities ──
+
+function extractURLFromExpression(exprPath: NodePath): string {
+  if (!exprPath) return '';
+
+  // String literal: "/about"
+  if (exprPath.isStringLiteral()) {
+    return exprPath.node.value;
+  }
+
+  // Template literal: `/products/${id}` → "/products/[dynamic]"
+  if (exprPath.isTemplateLiteral()) {
+    const quasis = exprPath.node.quasis;
+    const parts: string[] = [];
+    for (let i = 0; i < quasis.length; i++) {
+      parts.push(quasis[i].value.cooked ?? quasis[i].value.raw);
+      if (i < quasis.length - 1) {
+        parts.push('[dynamic]');
+      }
+    }
+    return parts.join('');
+  }
+
+  // Variable reference: resolve simple const assignments
+  if (exprPath.isIdentifier()) {
+    const binding = exprPath.scope.getBinding(exprPath.node.name);
+    if (binding) {
+      const initPath = binding.path.get('init');
+      if (!Array.isArray(initPath) && initPath.isStringLiteral()) {
+        return initPath.node.value;
+      }
+    }
+  }
+
+  return '';
 }
