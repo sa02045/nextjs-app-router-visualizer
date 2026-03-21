@@ -3,3 +3,6 @@ dist
 *.tgz
 .env*.local
 .DS_Store
+firebase-debug.log
+graph.html
+graph.json
