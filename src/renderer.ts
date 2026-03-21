@@ -70,8 +70,9 @@ function mermaidNode(url: string): string {
 }
 
 function mermaidArrow(trigger: string): string {
-  if (trigger === 'redirect') return '-..->';
+  if (trigger === 'redirect' || trigger === 'permanentRedirect') return '-..->';
   if (trigger === 'notFound') return '==>';
+  if (trigger.startsWith('history.')) return '-.->';
   return '-->';
 }
 

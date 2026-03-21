@@ -68,6 +68,6 @@ describe('LinkComponent', () => {
         }
       },
     });
-    expect(linkInfo).toEqual({ href: '/about', text: '테스트' });
+    expect(linkInfo).toEqual({ href: '/about', text: '테스트', isReplace: false });
   });
 });
