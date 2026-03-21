@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import nodePath from 'node:path';
+import chalk from 'chalk';
 import { parseSourceFile } from './ast.js';
 import { analyzeFile, extractLocalImports } from './analyzer.js';
 import { Graph } from './graph.js';
@@ -20,7 +21,10 @@ interface TraversalContext {
   visited: Set<string>;
 }
 
-export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
+/**
+ * Main entry point. Returns true on success, false on failure.
+ */
+export function start({ entryPagePath, output, format = 'html' }: StartArgs): boolean {
   if (!entryPagePath) {
     const cwdApp = nodePath.join(process.cwd(), 'src', 'app');
     const cwdAppNoSrc = nodePath.join(process.cwd(), 'app');
@@ -29,13 +33,13 @@ export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
     if (found) {
       entryPagePath = found;
     } else {
-      console.error("Can't find entry page file. Use --entry flag to specify");
-      return;
+      console.error(chalk.red('Error:'), "Can't find entry page file. Use --entry flag to specify.");
+      return false;
     }
   }
   if (!fs.existsSync(entryPagePath)) {
-    console.error("Can't find entry page file");
-    return;
+    console.error(chalk.red('Error:'), `Entry file not found: ${chalk.dim(entryPagePath)}`);
+    return false;
   }
 
   const normalizedPath = nodePath.normalize(entryPagePath);
@@ -44,12 +48,14 @@ export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
   const appIndex = pathParts.findIndex(part => part === 'app');
 
   if (appIndex === -1) {
-    console.error("Cannot find 'app' directory in the entry path:", entryPagePath);
-    return;
+    console.error(chalk.red('Error:'), `Cannot find 'app' directory in: ${chalk.dim(entryPagePath)}`);
+    return false;
   }
 
   const appFolderPath = pathParts.slice(0, appIndex + 1).join(nodePath.sep);
-  console.log('Using APP_FOLDER_PATH:', appFolderPath);
+
+  console.log(chalk.blue('Entry:'), chalk.dim(entryPagePath));
+  console.log(chalk.blue('App dir:'), chalk.dim(appFolderPath));
 
   const context: TraversalContext = {
     appFolderPath,
@@ -59,7 +65,17 @@ export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
 
   recursive(normalizedPath, context);
 
+  if (context.graph.isEmpty()) {
+    console.log(chalk.yellow('Warning:'), 'No navigation edges found.');
+    return true;
+  }
+
+  const nodeCount = context.graph.getNodes().length;
+  const edgeCount = context.graph.getAllEdges().length;
+
   renderGraph(context.graph, output, format);
+  console.log(chalk.green('Done!'), `${nodeCount} pages, ${edgeCount} edges → ${chalk.dim(output)}`);
+  return true;
 }
 
 /**
@@ -137,7 +153,7 @@ function recursive(filePath: string, context: TraversalContext) {
   context.visited.add(resolvedPath);
 
   if (!fs.existsSync(filePath)) {
-    console.error(filePath, 'File does not exist');
+    console.warn(chalk.yellow('Warning:'), `File not found: ${chalk.dim(filePath)}`);
     return;
   }
 
@@ -172,10 +188,10 @@ function recursive(filePath: string, context: TraversalContext) {
     const nextDir = nodePath.join(context.appFolderPath, edge.endURL);
     const nextFilePath = resolvePagePath(nextDir);
 
-    if (nextFilePath) {
-      recursive(nextFilePath, context);
+    if (!nextFilePath) {
+      console.warn(chalk.yellow('Warning:'), `No page file for route ${chalk.dim(edge.endURL)}`);
     } else {
-      console.error(`Page file not found in ${nextDir}`);
+      recursive(nextFilePath, context);
     }
   }
 }
