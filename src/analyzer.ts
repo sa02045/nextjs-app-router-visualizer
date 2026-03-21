@@ -1,17 +1,22 @@
-import _traverse from '@babel/traverse';
+import _traverse, { type NodePath } from '@babel/traverse';
 import type { ParseResult } from '@babel/parser';
-import type { File } from '@babel/types';
+import type { File, Node } from '@babel/types';
 import nodePath from 'node:path';
 import type { Edge } from './graph';
 import {
   getFunctionName,
+  getHistoryMethodName,
+  getRouterMethodName,
+  isHistoryStateCall,
   isInArrowFunctionExpression,
   isInFunctionDeclaration,
   isInJSXElement,
   isLinkNode,
   isNotFoundCall,
+  isPermanentRedirectCall,
   isRedirectCall,
-  isRouterNode,
+  isRouterMethodCall,
+  parseHistoryStateURL,
   parseInLineJSXRouterNode,
   parseLinkNode,
   parseRedirectArguments,
@@ -54,38 +59,59 @@ export function analyzeFile(ast: ParseResult<File>, filePath: string, appFolderP
       let nextURL = '';
       let trigger = '';
 
-      // Router.push / Router.replace
-      if (isRouterNode(path)) {
-        if (isInJSXElement(path)) {
-          if (isInArrowFunctionExpression(path)) {
-            trigger = parseInLineJSXRouterNode(path);
-            nextURL = parseRouterArguments(path);
-          }
+      // ── useRouter: push / replace ──
+      if (isRouterMethodCall(path)) {
+        const method = getRouterMethodName(path);
+
+        if (method === 'push' || method === 'replace') {
+          nextURL = parseRouterArguments(path);
+          trigger = resolveCallTrigger(path, `router.${method}`);
         }
 
-        if (!isInJSXElement(path) && isInFunctionDeclaration(path)) {
-          trigger = getFunctionName(path);
-          nextURL = parseRouterArguments(path);
+        if (method === 'back') {
+          nextURL = '[back]';
+          trigger = resolveCallTrigger(path, 'router.back');
+        }
+
+        if (method === 'forward') {
+          nextURL = '[forward]';
+          trigger = resolveCallTrigger(path, 'router.forward');
         }
       }
 
-      // <Link> component
+      // ── <Link> component ──
       if (isLinkNode(path)) {
         const linkInfo = parseLinkNode(path);
         nextURL = linkInfo.href;
-        trigger = linkInfo.text;
+        trigger = linkInfo.text || 'Link';
+        if (linkInfo.isReplace && trigger) {
+          trigger = `${trigger} (replace)`;
+        }
       }
 
-      // redirect()
+      // ── redirect() ──
       if (isRedirectCall(path)) {
         nextURL = parseRedirectArguments(path);
         trigger = 'redirect';
       }
 
-      // notFound()
+      // ── permanentRedirect() ──
+      if (isPermanentRedirectCall(path)) {
+        nextURL = parseRedirectArguments(path);
+        trigger = 'permanentRedirect';
+      }
+
+      // ── notFound() ──
       if (isNotFoundCall(path)) {
         nextURL = '/404';
         trigger = 'notFound';
+      }
+
+      // ── History API: pushState / replaceState ──
+      if (isHistoryStateCall(path)) {
+        const method = getHistoryMethodName(path);
+        nextURL = parseHistoryStateURL(path);
+        trigger = resolveCallTrigger(path, `history.${method}`);
       }
 
       if (nextURL && trigger) {
@@ -95,6 +121,25 @@ export function analyzeFile(ast: ParseResult<File>, filePath: string, appFolderP
   });
 
   return edges;
+}
+
+/**
+ * Resolve the trigger name for a call expression.
+ * Checks context: JSX inline handler → attribute name,
+ * function declaration → function name, fallback → provided default.
+ */
+function resolveCallTrigger(path: NodePath<Node>, fallback: string): string {
+  if (isInJSXElement(path)) {
+    if (isInArrowFunctionExpression(path)) {
+      return parseInLineJSXRouterNode(path) || fallback;
+    }
+  }
+
+  if (!isInJSXElement(path) && isInFunctionDeclaration(path)) {
+    return getFunctionName(path) || fallback;
+  }
+
+  return fallback;
 }
 
 function filePathToURL(filePath: string, appFolderPath: string): string {

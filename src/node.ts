@@ -9,36 +9,86 @@ export function isLinkNode(path: NodePath) {
 export function parseLinkNode(linkNodePath: NodePath) {
   let href = '';
   let text = '';
+  let isReplace = false;
 
   linkNodePath.traverse({
     enter(path) {
       if (path.isJSXAttribute()) {
         const name = path.get('name');
         const value = path.get('value');
+
+        // href="/about" (StringLiteral)
         if (name.isJSXIdentifier({ name: 'href' }) && value.isStringLiteral()) {
           href = value.node.value;
+        }
+
+        // href={"/about"} (JSXExpressionContainer wrapping StringLiteral)
+        if (name.isJSXIdentifier({ name: 'href' }) && value.isJSXExpressionContainer()) {
+          const expr = value.get('expression');
+          href = extractURLFromExpression(expr as NodePath);
+        }
+
+        // replace prop
+        if (name.isJSXIdentifier({ name: 'replace' })) {
+          // <Link replace> (no value = true) or <Link replace={true}>
+          if (!value.node || (value.isJSXExpressionContainer() && value.get('expression').isBooleanLiteral({ value: true }))) {
+            isReplace = true;
+          }
         }
       }
 
       if (path.isJSXText()) {
-        text = path.node.value;
+        const trimmed = path.node.value.trim();
+        if (trimmed) text = trimmed;
+      }
+
+      // Handle {children} text in JSX expression containers
+      if (path.isJSXExpressionContainer()) {
+        const expr = path.get('expression');
+        if (expr.isStringLiteral()) {
+          text = expr.node.value;
+        }
       }
     },
   });
 
-  return { href, text };
+  return { href, text, isReplace };
 }
 
-// ── Router Detection (router.push / router.replace) ──
+// ── Router Detection (useRouter from next/navigation) ──
 
-export function isRouterNode(path: NodePath) {
+/**
+ * Detects router.push(), router.replace(), router.back(), router.forward()
+ * Works with any variable name assigned from useRouter():
+ *   const router = useRouter()  →  router.push(...)
+ *   const r = useRouter()       →  r.push(...)
+ */
+export function isRouterMethodCall(path: NodePath) {
+  if (!path.isCallExpression()) return false;
+  const callee = path.get('callee');
+  if (!callee.isMemberExpression()) return false;
+
+  const property = callee.get('property');
   return (
-    path.isCallExpression() &&
-    path.get('callee').isMemberExpression() &&
-    path.get('callee.object').find(p => p.isIdentifier({ name: 'router' })) &&
-    (path.get('callee.property').find(p => p.isIdentifier({ name: 'push' })) ||
-      path.get('callee.property').find(p => p.isIdentifier({ name: 'replace' })))
+    property.isIdentifier({ name: 'push' }) ||
+    property.isIdentifier({ name: 'replace' }) ||
+    property.isIdentifier({ name: 'back' }) ||
+    property.isIdentifier({ name: 'forward' })
   );
+}
+
+export function getRouterMethodName(path: NodePath): string {
+  path.assertCallExpression();
+  const property = path.get('callee.property');
+  if (Array.isArray(property)) return '';
+  return property.isIdentifier() ? property.node.name : '';
+}
+
+// Legacy compat — narrower check used by existing code
+export function isRouterNode(path: NodePath) {
+  if (!isRouterMethodCall(path)) return false;
+  const method = getRouterMethodName(path);
+  return method === 'push' || method === 'replace';
 }
 
 export function parseRouterArguments(routerPath: NodePath) {
@@ -95,10 +145,14 @@ export function parseInLineJSXRouterNode(routerPath: NodePath) {
   return handlerName;
 }
 
-// ── redirect() Detection ──
+// ── redirect() / permanentRedirect() Detection ──
 
 export function isRedirectCall(path: NodePath) {
   return path.isCallExpression() && path.get('callee').isIdentifier({ name: 'redirect' });
+}
+
+export function isPermanentRedirectCall(path: NodePath) {
+  return path.isCallExpression() && path.get('callee').isIdentifier({ name: 'permanentRedirect' });
 }
 
 export function parseRedirectArguments(path: NodePath): string {
@@ -114,9 +168,55 @@ export function isNotFoundCall(path: NodePath) {
   return path.isCallExpression() && path.get('callee').isIdentifier({ name: 'notFound' });
 }
 
+// ── History API Detection ──
+
+/**
+ * Detects window.history.pushState(state, title, url) and
+ * window.history.replaceState(state, title, url)
+ */
+export function isHistoryStateCall(path: NodePath) {
+  if (!path.isCallExpression()) return false;
+  const callee = path.get('callee');
+  if (!callee.isMemberExpression()) return false;
+
+  const property = callee.get('property');
+  if (!property.isIdentifier({ name: 'pushState' }) && !property.isIdentifier({ name: 'replaceState' })) {
+    return false;
+  }
+
+  // Check for history.pushState or window.history.pushState
+  const object = callee.get('object');
+  if (object.isIdentifier({ name: 'history' })) return true;
+  if (
+    object.isMemberExpression() &&
+    object.get('object').isIdentifier({ name: 'window' }) &&
+    object.get('property').isIdentifier({ name: 'history' })
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function getHistoryMethodName(path: NodePath): string {
+  path.assertCallExpression();
+  const property = path.get('callee.property');
+  if (Array.isArray(property)) return '';
+  return property.isIdentifier() ? property.node.name : '';
+}
+
+export function parseHistoryStateURL(path: NodePath): string {
+  path.assertCallExpression();
+  // history.pushState(state, title, url) — URL is the 3rd argument
+  const args = path.get('arguments');
+  const urlArg = args[2];
+  if (!urlArg) return '';
+  return extractURLFromExpression(urlArg);
+}
+
 // ── URL Extraction Utilities ──
 
-function extractURLFromExpression(exprPath: NodePath): string {
+export function extractURLFromExpression(exprPath: NodePath): string {
   if (!exprPath) return '';
 
   // String literal: "/about"
