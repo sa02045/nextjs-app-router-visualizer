@@ -1,7 +1,7 @@
 import { parse } from '@babel/parser';
 import fs from 'node:fs';
 
-export function getJsxAST(path: string) {
+export function getJsxAST(path: string): ReturnType<typeof parse> {
   const code = fs.readFileSync(path, 'utf-8');
   return parse(code, {
     sourceType: 'module',
