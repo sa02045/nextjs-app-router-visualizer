@@ -2,6 +2,7 @@ import _traverse from '@babel/traverse';
 import type { ParseResult } from '@babel/parser';
 import type { File } from '@babel/types';
 import nodePath from 'node:path';
+import type { Edge } from './graph';
 import {
   getFunctionName,
   isInArrowFunctionExpression,
@@ -21,12 +22,6 @@ import {
 const traverse = (typeof _traverse === 'function'
   ? _traverse
   : (_traverse as unknown as { default: typeof _traverse }).default) as typeof _traverse;
-
-export interface NavigationEdge {
-  startURL: string;
-  endURL: string;
-  trigger: string;
-}
 
 export function extractComponentName(ast: ParseResult<File>): string {
   let componentName = '';
@@ -50,8 +45,8 @@ export function extractComponentName(ast: ParseResult<File>): string {
   return componentName;
 }
 
-export function analyzeFile(ast: ParseResult<File>, filePath: string, appFolderPath: string): NavigationEdge[] {
-  const edges: NavigationEdge[] = [];
+export function analyzeFile(ast: ParseResult<File>, filePath: string, appFolderPath: string): Edge[] {
+  const edges: Edge[] = [];
   const startURL = filePathToURL(filePath, appFolderPath);
 
   traverse(ast, {

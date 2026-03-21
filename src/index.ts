@@ -2,8 +2,11 @@ import fs from 'node:fs';
 import nodePath from 'node:path';
 import { parseSourceFile } from './ast.js';
 import { analyzeFile } from './analyzer.js';
-import { Graph, type OutputFormat } from './graph.js';
+import { Graph } from './graph.js';
+import { type OutputFormat, renderGraph } from './renderer.js';
 import { findPageFile } from './utils.js';
+
+export type { OutputFormat };
 
 interface StartArgs {
   entryPagePath: string;
@@ -17,7 +20,7 @@ interface TraversalContext {
   visited: Set<string>;
 }
 
-export function start({ entryPagePath, format = 'html' }: StartArgs) {
+export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
   if (!entryPagePath) {
     const cwdApp = nodePath.join(process.cwd(), 'src', 'app');
     const cwdAppNoSrc = nodePath.join(process.cwd(), 'app');
@@ -56,7 +59,7 @@ export function start({ entryPagePath, format = 'html' }: StartArgs) {
 
   recursive(normalizedPath, context);
 
-  context.graph.drawMermaidGraph(format);
+  renderGraph(context.graph, output, format);
 }
 
 function getDynamicRouteFolder(dir: string): string | null {
@@ -117,11 +120,8 @@ function recursive(filePath: string, context: TraversalContext) {
   const edges = analyzeFile(ast, filePath, context.appFolderPath);
 
   for (const edge of edges) {
-    if (context.graph.isDuplicateEdge(edge.startURL, edge)) {
-      continue;
-    }
-
-    context.graph.addEdge(edge.startURL, edge);
+    const added = context.graph.addEdge(edge);
+    if (!added) continue;
 
     const nextDir = nodePath.join(context.appFolderPath, edge.endURL);
     const nextFilePath = resolvePagePath(nextDir);

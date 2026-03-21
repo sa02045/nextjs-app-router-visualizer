@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import cac from 'cac';
-import { start } from './index.js';
+import { start, type OutputFormat } from './index.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findPageFile } from './utils.js';
@@ -11,6 +11,7 @@ const cli = cac('nextjs-app-router-visualizer');
 cli.help();
 cli.option('--entry <filepath>', 'Entry page file path');
 cli.option('--format <format>', 'Output format: html (default) or json');
+cli.option('--output <filepath>', 'Output file path (default: graph.html or graph.json)');
 
 const parsed = cli.parse();
 
@@ -34,10 +35,7 @@ if (entryFromArgs) {
 
 console.log('Using entry page path:', entryPagePath);
 
-const format = parsed.options.format === 'json' ? 'json' : 'html';
+const format: OutputFormat = parsed.options.format === 'json' ? 'json' : 'html';
+const output = parsed.options.output || (format === 'json' ? 'graph.json' : 'graph.html');
 
-start({
-  entryPagePath,
-  output: format === 'json' ? 'graph.json' : 'graph.html',
-  format,
-});
+start({ entryPagePath, output, format });
