@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import traverse from '@babel/traverse';
 import {
-  isRouterNode,
+  isRouterMethodCall,
+  getRouterMethodName,
   isInArrowFunctionExpression,
   isInFunctionDeclaration,
   isInJSXElement,
@@ -10,6 +11,12 @@ import {
   getFunctionName,
 } from '../src/node';
 import { parseTestCode } from './helpers';
+
+function isRouterPushOrReplace(path: Parameters<Parameters<typeof traverse>[1]['enter'] & Function>[0]) {
+  if (!isRouterMethodCall(path)) return false;
+  const m = getRouterMethodName(path);
+  return m === 'push' || m === 'replace';
+}
 
 describe('router.push()', () => {
   const codeWithRouterPush = `
@@ -45,7 +52,7 @@ describe('router.push()', () => {
     let result = false;
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           result = true;
           path.stop();
         }
@@ -58,7 +65,7 @@ describe('router.push()', () => {
     let result = false;
     traverse(astWithRouterReplace, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           result = true;
           path.stop();
         }
@@ -85,7 +92,7 @@ describe('router.push()', () => {
 
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           if (isInJSXElement(path)) {
             if (isInArrowFunctionExpression(path)) {
               const handlerName = parseInLineJSXRouterNode(path);
@@ -123,7 +130,7 @@ describe('router.push()', () => {
 
     traverse(ast, {
       enter(path) {
-        if (isRouterNode(path)) {
+        if (isRouterPushOrReplace(path)) {
           if (!isInJSXElement(path)) {
             if (isInFunctionDeclaration(path)) {
               const handlerName = getFunctionName(path);
@@ -137,5 +144,24 @@ describe('router.push()', () => {
     });
     expect(handlerNames).toEqual(['handleClick']);
     expect(urls).toEqual(['/about']);
+  });
+
+  it('should NOT match array.push() or other non-router push calls', () => {
+    const ast = parseTestCode(`
+      function Product() {
+        const items: string[] = [];
+        items.push("/about");
+      }
+    `);
+
+    let found = false;
+    traverse(ast, {
+      enter(path) {
+        if (isRouterMethodCall(path)) {
+          found = true;
+        }
+      },
+    });
+    expect(found).toBe(false);
   });
 });

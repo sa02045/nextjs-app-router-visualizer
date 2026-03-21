@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import nodePath from 'node:path';
 import { parseSourceFile } from './ast.js';
-import { analyzeFile } from './analyzer.js';
+import { analyzeFile, extractLocalImports } from './analyzer.js';
 import { Graph } from './graph.js';
 import { type OutputFormat, renderGraph } from './renderer.js';
 import { findPageFile } from './utils.js';
@@ -62,20 +62,47 @@ export function start({ entryPagePath, output, format = 'html' }: StartArgs) {
   renderGraph(context.graph, output, format);
 }
 
+/**
+ * Check if a URL is a local route that can be recursively traversed.
+ * Excludes external URLs, special nodes, and anchor-only links.
+ */
+function isTraversableURL(url: string): boolean {
+  // External URLs
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) return false;
+  // Special synthetic nodes
+  if (url.startsWith('[') || url === '/404') return false;
+  // Anchor-only or query-only
+  if (url.startsWith('#') || url.startsWith('?')) return false;
+  // mailto, tel, etc.
+  if (url.includes(':')) return false;
+  return true;
+}
+
+/**
+ * Find a dynamic route folder inside a directory.
+ * Supports: [id], [...slug], [[...slug]]
+ * Prefers specific dynamic ([id]) over catch-all ([...slug]) over optional catch-all ([[...slug]]).
+ */
 function getDynamicRouteFolder(dir: string): string | null {
-  let dynamicRoute: string | null = null;
+  let specific: string | null = null;
+  let catchAll: string | null = null;
+  let optionalCatchAll: string | null = null;
 
   try {
-    fs.readdirSync(dir).forEach(file => {
-      if (file.startsWith('[') && file.endsWith(']')) {
-        dynamicRoute = nodePath.join(dir, file);
+    for (const file of fs.readdirSync(dir)) {
+      if (file.startsWith('[[') && file.endsWith(']]')) {
+        optionalCatchAll = nodePath.join(dir, file);
+      } else if (file.startsWith('[...') && file.endsWith(']')) {
+        catchAll = nodePath.join(dir, file);
+      } else if (file.startsWith('[') && file.endsWith(']')) {
+        specific = nodePath.join(dir, file);
       }
-    });
+    }
   } catch {
     return null;
   }
 
-  return dynamicRoute;
+  return specific || catchAll || optionalCatchAll;
 }
 
 function resolvePagePath(dir: string): string | null {
@@ -117,11 +144,30 @@ function recursive(filePath: string, context: TraversalContext) {
   const ast = parseSourceFile(filePath);
   if (!ast) return;
 
+  // Analyze the page file itself
   const edges = analyzeFile(ast, filePath, context.appFolderPath);
+
+  // Also analyze locally imported components (they may contain navigation)
+  const localImports = extractLocalImports(ast, filePath);
+  for (const importPath of localImports) {
+    const resolvedImport = nodePath.resolve(importPath);
+    if (context.visited.has(resolvedImport)) continue;
+    // Mark as visited but don't add as a page — just extract edges
+    context.visited.add(resolvedImport);
+
+    const importAst = parseSourceFile(importPath);
+    if (!importAst) continue;
+
+    const importEdges = analyzeFile(importAst, filePath, context.appFolderPath);
+    edges.push(...importEdges);
+  }
 
   for (const edge of edges) {
     const added = context.graph.addEdge(edge);
     if (!added) continue;
+
+    // Skip recursion for non-navigable edges
+    if (!isTraversableURL(edge.endURL)) continue;
 
     const nextDir = nodePath.join(context.appFolderPath, edge.endURL);
     const nextFilePath = resolvePagePath(nextDir);

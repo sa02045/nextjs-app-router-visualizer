@@ -57,11 +57,12 @@ export function parseLinkNode(linkNodePath: NodePath) {
 
 // ── Router Detection (useRouter from next/navigation) ──
 
+const ROUTER_METHODS = new Set(['push', 'replace', 'back', 'forward']);
+
 /**
  * Detects router.push(), router.replace(), router.back(), router.forward()
- * Works with any variable name assigned from useRouter():
- *   const router = useRouter()  →  router.push(...)
- *   const r = useRouter()       →  r.push(...)
+ * Verifies the object is a useRouter() return value to avoid false positives
+ * like array.push() or stack.push().
  */
 export function isRouterMethodCall(path: NodePath) {
   if (!path.isCallExpression()) return false;
@@ -69,12 +70,20 @@ export function isRouterMethodCall(path: NodePath) {
   if (!callee.isMemberExpression()) return false;
 
   const property = callee.get('property');
-  return (
-    property.isIdentifier({ name: 'push' }) ||
-    property.isIdentifier({ name: 'replace' }) ||
-    property.isIdentifier({ name: 'back' }) ||
-    property.isIdentifier({ name: 'forward' })
-  );
+  if (!property.isIdentifier() || !ROUTER_METHODS.has(property.node.name)) return false;
+
+  // Verify the object is a useRouter() return value
+  const object = callee.get('object');
+  if (!object.isIdentifier()) return false;
+
+  const binding = object.scope.getBinding(object.node.name);
+  if (!binding) return true; // unresolvable — assume router (keep existing behavior for unscoped code)
+
+  const init = binding.path.get('init');
+  if (Array.isArray(init)) return false;
+
+  // const router = useRouter()
+  return init.isCallExpression() && init.get('callee').isIdentifier({ name: 'useRouter' });
 }
 
 export function getRouterMethodName(path: NodePath): string {
@@ -82,13 +91,6 @@ export function getRouterMethodName(path: NodePath): string {
   const property = path.get('callee.property');
   if (Array.isArray(property)) return '';
   return property.isIdentifier() ? property.node.name : '';
-}
-
-// Legacy compat — narrower check used by existing code
-export function isRouterNode(path: NodePath) {
-  if (!isRouterMethodCall(path)) return false;
-  const method = getRouterMethodName(path);
-  return method === 'push' || method === 'replace';
 }
 
 export function parseRouterArguments(routerPath: NodePath) {
