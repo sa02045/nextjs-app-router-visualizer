@@ -1,18 +1,22 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-export default function Entry() {
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function HomePage() {
   const router = useRouter();
 
-  function handle제품보러가기() {
-    router.push('/product');
+  function handleGoToProducts() {
+    router.push("/products");
   }
 
   return (
     <div>
-      <button onClick={handle제품보러가기}>제품보러가기</button>
-      <Link href="/profile">내 프로필 페이지 이동 버튼</Link>
+      <h1>Home</h1>
+      <button onClick={handleGoToProducts}>Browse Products</button>
+      <Link href="/cart">View Cart</Link>
+      <Link href="/auth/login">Login</Link>
+      <Link href="/settings">Settings</Link>
     </div>
   );
 }
