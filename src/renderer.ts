@@ -14,7 +14,6 @@ export function renderGraph(graph: Graph, outputPath: string, format: OutputForm
 
 function renderJSON(graph: Graph, outputPath: string) {
   fs.writeFileSync(outputPath, JSON.stringify(graph.toJSON(), null, 2));
-  console.log(`Graph written to ${outputPath}`);
 }
 
 function renderMermaidHTML(graph: Graph, outputPath: string) {
@@ -31,10 +30,12 @@ function renderMermaidHTML(graph: Graph, outputPath: string) {
     </script>
     <style>
       body { font-family: system-ui, sans-serif; margin: 2rem; background: #fafafa; }
+      h1 { font-size: 1.25rem; color: #333; margin-bottom: 1rem; }
       .mermaid { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
   </head>
   <body>
+    <h1>Next.js App Router - Page Flow</h1>
     <pre class="mermaid">
 ${mermaidSyntax}
     </pre>
@@ -53,7 +54,7 @@ function toMermaidSyntax(graph: Graph): string {
     for (const edge of edges) {
       const startNode = mermaidNode(edge.startURL);
       const endNode = mermaidNode(edge.endURL);
-      const arrow = mermaidArrow(edge.trigger);
+      const arrow = mermaidArrow(edge);
       const label = sanitizeLabel(edge.trigger);
 
       syntax += `${startNode} ${arrow}|${label}| ${endNode}\n`;
@@ -66,13 +67,25 @@ function toMermaidSyntax(graph: Graph): string {
 function mermaidNode(url: string): string {
   const id = sanitizeId(url);
   const label = quote(url);
-  return url.includes('[') ? `${id}{{${label}}}` : `${id}[${label}]`;
+
+  // Special nodes get distinct shapes
+  if (url === '/404') return `${id}(((${label})))`;
+  if (url.startsWith('[')) return `${id}{{${label}}}`;
+  return `${id}[${label}]`;
 }
 
-function mermaidArrow(trigger: string): string {
+function mermaidArrow(edge: Edge): string {
+  const { trigger } = edge;
+
+  // Server redirects: dotted line
   if (trigger === 'redirect' || trigger === 'permanentRedirect') return '-..->';
+  // notFound: thick line
   if (trigger === 'notFound') return '==>';
+  // History API: dash-dot
   if (trigger.startsWith('history.')) return '-.->';
+  // replace navigation: dashed
+  if (trigger.includes('(replace)') || trigger === 'router.replace') return '-..->';
+  // Default: solid
   return '-->';
 }
 
